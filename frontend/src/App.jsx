@@ -338,78 +338,84 @@ for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
   extractedText += pageText + "\n";
 }
 
-setResumeText(extractedText);
+const cleanResumeText = extractedText
+  .replace(/\s+/g, " ")
+  .trim();
 
-console.log("Extracted resume text:", extractedText);
+const cleanJobDescription = jobDescription
+  .replace(/\s+/g, " ")
+  .trim();
 
-const resumeWords = extractedText
-  .toLowerCase()
-  .match(/\b[a-zA-Z][a-zA-Z0-9+#.-]{2,}\b/g) || [];
+setResumeText(cleanResumeText);
 
-const jobWords = jobDescription
-  .toLowerCase()
-  .match(/\b[a-zA-Z][a-zA-Z0-9+#.-]{2,}\b/g) || [];
+console.info("[CareerMatch] Input diagnostics:", {
+  pdfPages: pdf.numPages,
+  resumeCharacters: cleanResumeText.length,
+  jobDescriptionCharacters: cleanJobDescription.length,
+});
 
-const uniqueResumeWords = [...new Set(resumeWords)];
-const uniqueJobWords = [...new Set(jobWords)];
+if (!cleanResumeText) {
+  setMessage(
+    "No readable text was found in your PDF. Please upload a text-based PDF instead of a scanned image PDF."
+  );
+  return;
+}
 
-const matchedWords = uniqueJobWords.filter((word) =>
-  uniqueResumeWords.includes(word)
-);
+if (!cleanJobDescription) {
+  setMessage("Please enter a job description.");
+  return;
+}
 
-const score = Math.round(
-  (matchedWords.length / Math.max(uniqueJobWords.length, 1)) * 100
-);
 
-const commonSkills = [
-  "javascript",
-  "react",
-  "node",
-  "node.js",
-  "python",
-  "java",
-  "c++",
-  "sql",
-  "html",
-  "css",
-  "mongodb",
-  "supabase",
-  "git",
-  "github",
-  "typescript",
-  "express",
-  "aws",
-  "docker",
-  "machine learning",
-  "data structures",
-  "algorithms"
-];
+const {
+  data: { session },
+  error: sessionError,
+} = await supabase.auth.getSession();
 
-const resumeSkills = commonSkills.filter((skill) =>
-  extractedText.toLowerCase().includes(skill)
-);
+if (sessionError || !session?.access_token) {
+  setMessage("Your session has expired. Please sign in again.");
+  return;
+}
 
-const jobSkills = commonSkills.filter((skill) =>
-  jobDescription.toLowerCase().includes(skill)
-);
+try {
+  const response = await fetch(
+    "https://careermatch-ai-qqwj.onrender.com/analyze",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        resume_text: extractedText,
+        job_description: jobDescription,
+      }),
+    }
+  );
 
-const matched = jobSkills.filter((skill) =>
-  resumeSkills.includes(skill)
-);
+  const result = await response.json();
 
-const missing = jobSkills.filter(
-  (skill) => !resumeSkills.includes(skill)
-);
+  if (!response.ok) {
+    console.error("Backend analysis error:", result);
+    setMessage(
+      result.detail || "Resume analysis failed. Please try again."
+    );
+    return;
+  }
 
-setMatchScore(score);
-setMatchedSkills(matched);
-setMissingSkills(missing);
+  setMatchScore(result.score);
+  setMatchedSkills(result.matched_skills || []);
+  setMissingSkills(result.missing_skills || []);
+  setMessage(result.message);
 
-setMessage(
-  missing.length > 0
-    ? `Resume analyzed successfully! Match Score: ${score}%. Consider adding: ${missing.join(", ")}`
-    : `Resume analyzed successfully! Match Score: ${score}%. Your resume covers the key skills in this job description.`
-);
+} catch (apiError) {
+  console.error("Backend connection error:", apiError);
+
+  setMessage(
+    "Could not connect to the analysis server. Please try again."
+  );
+}
+
 
   }}
 >

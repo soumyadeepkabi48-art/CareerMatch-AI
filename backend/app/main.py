@@ -99,14 +99,23 @@ async def analyze_resume(
     request: AnalyzeRequest,
     user: dict = Depends(verify_user),
 ):
-    resume_text = request.resume_text.strip().lower()
-    job_description = request.job_description.strip().lower()
+    raw_resume_text = request.resume_text.strip()
+raw_job_description = request.job_description.strip()
 
-    if not resume_text or not job_description:
-        raise HTTPException(
-            status_code=400,
-            detail="Resume text and job description are required."
-        )
+if not raw_resume_text:
+    raise HTTPException(
+        status_code=400,
+        detail="No readable text was extracted from your resume PDF."
+    )
+
+if not raw_job_description:
+    raise HTTPException(
+        status_code=400,
+        detail="Please provide a job description."
+    )
+
+resume_text = raw_resume_text.lower()
+job_description = raw_job_description.lower()
 
     pattern = r"\b[a-zA-Z][a-zA-Z0-9+#.-]{2,}\b"
 

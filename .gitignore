@@ -1,0 +1,38 @@
+# Dependencies and build output
+node_modules/
+dist/
+dist-ssr/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local development files
+.cursor/
+.vercel/
+
+# Accidental root-level npm files
+/package.json
+/package-lock.json
